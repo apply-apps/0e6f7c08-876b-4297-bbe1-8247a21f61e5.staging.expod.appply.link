@@ -1,0 +1,240 @@
+```js
+// App.js
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import axios from 'axios';
+
+const Stack = createStackNavigator();
+
+const HomeScreen = ({ navigation }) => {
+  return (
+    <View style={styles.container}>
+      <Image
+        source={{ uri: 'https://picsum.photos/200/100' }}
+        style={styles.logo}
+      />
+      <Text style={styles.title}>Welcome to Hair Salon</Text>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('BookAppointment')}
+      >
+        <Text style={styles.buttonText}>Book Appointment</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('ViewAppointments')}
+      >
+        <Text style={styles.buttonText}>View Appointments</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const BookAppointmentScreen = () => {
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [name, setName] = useState('');
+  const [service, setService] = useState('');
+  const [hairAdvice, setHairAdvice] = useState('');
+
+  const onChangeDate = (event, selectedDate) => {
+    const currentDate = selectedDate || date;
+    setShowDatePicker(false);
+    setDate(currentDate);
+  };
+
+  const bookAppointment = async () => {
+    if (name && service) {
+      try {
+        const response = await axios.post('https://apihub.staging.appply.link/chatgpt', {
+          messages: [
+            { role: "system", content: "You are a helpful hairdresser assistant. Provide a short piece of advice based on the customer's chosen service." },
+            { role: "user", content: `The customer has booked a ${service}. Please provide a short piece of advice.` }
+          ],
+          model: "gpt-4o"
+        });
+        const advice = response.data.response;
+        setHairAdvice(advice);
+        Alert.alert('Appointment Booked', `Name: ${name}\nService: ${service}\nDate: ${date.toLocaleString()}\n\nHairdresser's Advice: ${advice}`);
+        setName('');
+        setService('');
+        setDate(new Date());
+      } catch (error) {
+        console.error('Error fetching hair advice:', error);
+        Alert.alert('Appointment Booked', `Name: ${name}\nService: ${service}\nDate: ${date.toLocaleString()}`);
+      }
+    } else {
+      Alert.alert('Error', 'Please fill in all fields');
+    }
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Book an Appointment</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Your Name"
+        value={name}
+        onChangeText={setName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Service Required"
+        value={service}
+        onChangeText={setService}
+      />
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => setShowDatePicker(true)}
+      >
+        <Text style={styles.buttonText}>Select Date and Time</Text>
+      </TouchableOpacity>
+      <Text style={styles.dateText}>
+        Selected: {date.toLocaleString()}
+      </Text>
+      {showDatePicker && (
+        <DateTimePicker
+          value={date}
+          mode="datetime"
+          is24Hour={true}
+          display="default"
+          onChange={onChangeDate}
+        />
+      )}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={bookAppointment}
+      >
+        <Text style={styles.buttonText}>Book Appointment</Text>
+      </TouchableOpacity>
+      {hairAdvice ? (
+        <View style={styles.adviceContainer}>
+          <Text style={styles.adviceTitle}>Hairdresser's Advice:</Text>
+          <Text style={styles.adviceText}>{hairAdvice}</Text>
+        </View>
+      ) : null}
+    </ScrollView>
+  );
+};
+
+const ViewAppointmentsScreen = () => {
+  const [appointments, setAppointments] = useState([]);
+
+  useEffect(() => {
+    // Simulating fetching appointments from a backend
+    const fetchAppointments = async () => {
+      // In a real app, you would make an API call here
+      const fakeAppointments = [
+        { id: 1, name: 'John Doe', service: 'Haircut', date: new Date().toLocaleString() },
+        { id: 2, name: 'Jane Smith', service: 'Color', date: new Date(Date.now() + 86400000).toLocaleString() },
+      ];
+      setAppointments(fakeAppointments);
+    };
+
+    fetchAppointments();
+  }, []);
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Your Appointments</Text>
+      {appointments.map((appointment) => (
+        <View key={appointment.id} style={styles.appointmentCard}>
+          <Text style={styles.appointmentText}>Name: {appointment.name}</Text>
+          <Text style={styles.appointmentText}>Service: {appointment.service}</Text>
+          <Text style={styles.appointmentText}>Date: {appointment.date}</Text>
+        </View>
+      ))}
+    </ScrollView>
+  );
+};
+
+const App = () => {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Home">
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Hair Salon' }} />
+        <Stack.Screen name="BookAppointment" component={BookAppointmentScreen} options={{ title: 'Book Appointment' }} />
+        <Stack.Screen name="ViewAppointments" component={ViewAppointmentsScreen} options={{ title: 'View Appointments' }} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  logo: {
+    width: 200,
+    height: 100,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 5,
+    marginVertical: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  input: {
+    width: '100%',
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    borderRadius: 5,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  dateText: {
+    marginVertical: 10,
+    fontSize: 16,
+  },
+  appointmentCard: {
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 5,
+    marginVertical: 10,
+    width: '100%',
+  },
+  appointmentText: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  adviceContainer: {
+    backgroundColor: '#e6f7ff',
+    padding: 15,
+    borderRadius: 5,
+    marginTop: 20,
+    width: '100%',
+  },
+  adviceTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  adviceText: {
+    fontSize: 16,
+  },
+});
+
+export default App;
+// End of App.js
+```
